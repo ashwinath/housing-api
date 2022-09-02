@@ -13,7 +13,11 @@ RESOURCE_ID_HDB_RESALE = "f1765b54-a209-4718-8d38-a39237f502b3"
 cache = {} # cache_key: {data: {}, cache_expire: date}
 URL_STRING = "https://data.gov.sg/api/action/datastore_search"
 
-class MainHandler(tornado.web.RequestHandler):
+class HealthCheckHandler(tornado.web.RequestHandler):
+    async def get(self):
+        self.write('{"status": "ok"}')
+
+class HousingHandler(tornado.web.RequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -92,7 +96,8 @@ def get_result_month_generator(start_result_month: str) -> Generator[int, None, 
 
 def make_app():
     return tornado.web.Application([
-        (r"/query", MainHandler),
+        (r"/query", HousingHandler),
+        (r"/", HealthCheckHandler),
     ])
 
 async def main():
