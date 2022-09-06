@@ -7,11 +7,12 @@ import urllib.parse
 import tornado.web
 import tornado.httpclient
 
-from typing import Any, Dict, Generator, Union
+from typing import Any, Dict, Generator, Iterable, Union
 
 RESOURCE_ID_HDB_RESALE = "f1765b54-a209-4718-8d38-a39237f502b3"
 cache = {} # cache_key: {data: {}, cache_expire: date}
 URL_STRING = "https://data.gov.sg/api/action/datastore_search"
+BATCH_SIZE = 10
 
 class HealthCheckHandler(tornado.web.RequestHandler):
     async def get(self):
@@ -52,10 +53,16 @@ async def query_data(
     end_lease_year: str, # yyyy
 ) -> Dict[str, Union[str, int]]:
     http_client = tornado.httpclient.AsyncHTTPClient()
-    futures = []
 
+    pairs = [] # month_string, lease_year
     for month_string in get_result_month_generator(start_result_month):
         for lease_year in range(int(start_lease_year), int(end_lease_year)+1):
+            pairs.append((month_string, lease_year,))
+
+    results = []
+    for batch_group in batch(pairs, BATCH_SIZE):
+        futures = []
+        for month_string, lease_year in batch_group:
             ckan_params = {
                 "street_name": street_name,
                 "month": month_string,
@@ -70,7 +77,8 @@ async def query_data(
             future = http_client.fetch(f"{URL_STRING}?{query_params}")
             futures.append(future)
 
-    results = await asyncio.gather(*futures)
+        inner_results = await asyncio.gather(*futures)
+        results.extend(inner_results)
 
     parsed = []
     for result in results:
@@ -86,6 +94,10 @@ async def query_data(
             })
 
     return parsed
+
+def batch(iterable: Iterable[Any], batch_size: int):
+    for i in range(0, len(iterable), batch_size):
+        yield iterable[i:min(i + batch_size, len(iterable))]
 
 def get_result_month_generator(start_result_month: str) -> Generator[int, None, None]:
     current = arrow.get(f"{start_result_month}-01T00:00:00.000000+08:00")
