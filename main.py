@@ -71,7 +71,7 @@ async def query_data(
 ) -> Dict[str, Union[str, int]]:
     http_client = tornado.httpclient.AsyncHTTPClient()
 
-    if end_lease_year - start_lease_year > SEARCH_THRESHOLD_YEARS:
+    if int(end_lease_year) - int(start_lease_year) > SEARCH_THRESHOLD_YEARS:
         logging.warn("Discarding search, too many years to search.")
         return []
 
