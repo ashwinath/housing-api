@@ -37,7 +37,7 @@ class HousingHandler(tornado.web.RequestHandler):
 
         # Check for locks
         while cache_key in is_processing:
-            yield asyncio.sleep(1)
+            await asyncio.sleep(1)
 
         if cache_key in cache and cache[cache_key]["cache_expire"] > arrow.now():
             self.write_json(cache[cache_key]["data"])
