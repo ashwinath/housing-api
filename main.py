@@ -3,6 +3,7 @@ import asyncio
 import http.client
 import json
 import urllib.parse
+import os
 
 import tornado.web
 import tornado.httpclient
@@ -12,7 +13,7 @@ from typing import Any, Dict, Generator, Iterable, Union
 RESOURCE_ID_HDB_RESALE = "f1765b54-a209-4718-8d38-a39237f502b3"
 cache = {} # cache_key: {data: {}, cache_expire: date}
 URL_STRING = "https://data.gov.sg/api/action/datastore_search"
-BATCH_SIZE = 10
+BATCH_SIZE = os.environ.get("BATCH_SIZE", 5)
 
 class HealthCheckHandler(tornado.web.RequestHandler):
     async def get(self):
