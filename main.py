@@ -15,6 +15,7 @@ from typing import Any, Dict, Generator, Iterable, Union
 RESOURCE_ID_HDB_RESALE = "f1765b54-a209-4718-8d38-a39237f502b3"
 URL_STRING = "https://data.gov.sg/api/action/datastore_search"
 BATCH_SIZE = int(os.environ.get("BATCH_SIZE", 5))
+SEARCH_THRESHOLD_YEARS = 7
 
 cache = {} # cache_key: {data: {}, cache_expire: date}
 is_processing = set() # cache_key
@@ -69,6 +70,10 @@ async def query_data(
     end_lease_year: str, # yyyy
 ) -> Dict[str, Union[str, int]]:
     http_client = tornado.httpclient.AsyncHTTPClient()
+
+    if end_lease_year - start_lease_year > SEARCH_THRESHOLD_YEARS:
+        logging.warn("Discarding search, too many years to search.")
+        return []
 
     pairs = [] # month_string, lease_year
     for month_string in get_result_month_generator(start_result_month):
