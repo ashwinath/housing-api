@@ -12,9 +12,11 @@ from tornado.log import enable_pretty_logging
 from typing import Any, Dict, Generator, Iterable, Union
 
 RESOURCE_ID_HDB_RESALE = "f1765b54-a209-4718-8d38-a39237f502b3"
-cache = {} # cache_key: {data: {}, cache_expire: date}
 URL_STRING = "https://data.gov.sg/api/action/datastore_search"
 BATCH_SIZE = int(os.environ.get("BATCH_SIZE", 5))
+
+cache = {} # cache_key: {data: {}, cache_expire: date}
+is_processing = set() # cache_key
 
 class HealthCheckHandler(tornado.web.RequestHandler):
     async def get(self):
@@ -32,15 +34,26 @@ class HousingHandler(tornado.web.RequestHandler):
         end_lease_year     = self.get_argument("end_lease") # yyyy
 
         cache_key = f"{street_name}-{flat_type}-{start_lease_year}-{end_lease_year}-{start_result_month}"
+
+        # Check for locks
+        while cache_key in is_processing:
+            yield asyncio.sleep(1)
+
         if cache_key in cache and cache[cache_key]["cache_expire"] > arrow.now():
             self.write_json(cache[cache_key]["data"])
             return
 
-        data = await query_data(street_name, flat_type, start_result_month, start_lease_year, end_lease_year)
-        cache_expire = arrow.now().shift(days=1)
-        cache[cache_key] = {"data": data, "cache_expire": cache_expire}
+        try:
+            # Acquire lock
+            is_processing.add(cache_key)
+            data = await query_data(street_name, flat_type, start_result_month, start_lease_year, end_lease_year)
+            cache_expire = arrow.now().shift(days=1)
+            cache[cache_key] = {"data": data, "cache_expire": cache_expire}
 
-        self.write_json(data)
+            self.write_json(data)
+        finally:
+            # Remove lock
+            is_processing.remove(cache_key)
 
     def write_json(self, payload: Dict[Any, Any]):
         r = json.dumps(payload)
