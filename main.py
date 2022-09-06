@@ -2,6 +2,7 @@ import arrow
 import asyncio
 import http.client
 import json
+import logging
 import urllib.parse
 import os
 
@@ -98,6 +99,7 @@ async def query_data(
     parsed = []
     for result in results:
         if result.code != 200:
+            logging.warn(f"error fetching data, error code: {result.code}")
             return None
         body = tornado.escape.json_decode(result.body)
         for record in body["result"]["records"]:
@@ -129,6 +131,7 @@ def make_app():
 
 async def main():
     enable_pretty_logging()
+    logging.info(f"Starting server at port {6000}.")
     app = make_app()
     app.listen(6000)
     await asyncio.Event().wait()
