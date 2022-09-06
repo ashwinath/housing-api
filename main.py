@@ -7,6 +7,7 @@ import os
 
 import tornado.web
 import tornado.httpclient
+from tornado.log import enable_pretty_logging
 
 from typing import Any, Dict, Generator, Iterable, Union
 
@@ -114,6 +115,7 @@ def make_app():
     ])
 
 async def main():
+    enable_pretty_logging()
     app = make_app()
     app.listen(6000)
     await asyncio.Event().wait()
